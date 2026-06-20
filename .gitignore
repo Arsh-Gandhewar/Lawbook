@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+venv/
+env/
+__pycache__/
+
+# Models & Data
+*.safetensors
+*.bin
+*.pt
+*.csv
+.cache/
+client/.cache/
+client/node_modules/.cache/
+
+# Environment variables
+.env
+.env.*
+
+# Build files
+client/build/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

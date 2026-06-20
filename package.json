@@ -1,0 +1,41 @@
+{
+  "name": "lawbook",
+  "version": "1.0.0",
+  "description": "AI-powered legal guidance platform",
+  "main": "server/server.js",
+  "scripts": {
+    "server": "nodemon server/server.js",
+    "client": "cd client && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "cd client && npm run build",
+    "seed": "node server/seed.js",
+    "seed-legal": "node server/seedLegalData.js",
+    "seed-traffic": "node server/seedTrafficRules.js",
+    "seed-sc": "node server/ingestSCJudgments.js",
+    "seed-hc": "node server/ingestHCJudgments.js",
+    "seed-all": "node server/seedAll.js"
+  },
+  "keywords": [
+    "legal",
+    "ai",
+    "lawyer",
+    "consultation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.5.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.6.3",
+    "nodemailer": "^8.0.1",
+    "razorpay": "^2.9.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.1",
+    "nodemon": "^3.0.1"
+  }
+}

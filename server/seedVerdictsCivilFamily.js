@@ -1,0 +1,665 @@
+require('dotenv').config();
+const mongoose = require('mongoose');
+const CourtVerdict = require('./models/CourtVerdict');
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/lawbook';
+
+const verdicts = [
+  // =============================================
+  // FAMILY LAW VERDICTS
+  // =============================================
+  {
+    caseName: 'Mohd. Ahmed Khan v. Shah Bano Begum',
+    citation: '(1985) 2 SCC 556',
+    court: 'Supreme Court',
+    year: 1985,
+    judges: ['Y.V. Chandrachud', 'D.A. Desai', 'O. Chinnappa Reddy', 'E.S. Venkataramiah', 'Ranganath Misra'],
+    summary: 'Shah Bano, a 62-year-old Muslim woman, was divorced by her husband through triple talaq after 43 years of marriage and sought maintenance under Section 125 CrPC.',
+    legalPrinciple: 'A divorced Muslim woman is entitled to maintenance under Section 125 CrPC, which applies to all citizens irrespective of religion. The provision is a secular measure to prevent vagrancy and destitution.',
+    verdict: 'The Supreme Court upheld Shah Bano\'s right to maintenance under Section 125 CrPC even after the iddat period. Section 125 CrPC is a secular provision applicable to all religions and a Muslim husband\'s liability to maintain a divorced wife is not limited to the iddat period.',
+    significance: 'One of the most politically significant judgments in Indian history. Led to massive political controversy and the enactment of the Muslim Women (Protection of Rights on Divorce) Act, 1986, which was intended to override this judgment. Catalyzed the Uniform Civil Code debate.',
+    relatedSections: ['Section 125 CrPC', 'Article 44'],
+    relatedActs: ['Code of Criminal Procedure, 1973', 'Muslim Women (Protection of Rights on Divorce) Act, 1986', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['Shah Bano', 'Muslim women maintenance', 'triple talaq', 'uniform civil code', 'Section 125', 'personal law', 'divorce', 'iddat']
+  },
+  {
+    caseName: 'Sarla Mudgal v. Union of India',
+    citation: '(1995) 3 SCC 635',
+    court: 'Supreme Court',
+    year: 1995,
+    judges: ['Kuldip Singh', 'R.M. Sahai'],
+    summary: 'The case examined whether a Hindu husband who converts to Islam to solemnize a second marriage without dissolving the first Hindu marriage is guilty of bigamy under Section 494 IPC.',
+    legalPrinciple: 'A Hindu marriage can only be dissolved under the Hindu Marriage Act, 1955. Conversion to Islam and contracting a second marriage without dissolving the first Hindu marriage constitutes bigamy under Section 494 IPC.',
+    verdict: 'The Supreme Court held that conversion to Islam solely for the purpose of contracting a second marriage is an abuse of personal law and amounts to bigamy punishable under Section 494 IPC. The first Hindu marriage subsists unless dissolved under the Hindu Marriage Act.',
+    significance: 'Plugged the legal loophole of conversion-based bigamy. Strengthened the case for a Uniform Civil Code under Article 44. Established that personal law cannot be used as a device to commit fraud on the law.',
+    relatedSections: ['Section 494 IPC', 'Article 44', 'Section 17 Hindu Marriage Act'],
+    relatedActs: ['Hindu Marriage Act, 1955', 'Indian Penal Code, 1860', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['bigamy', 'conversion', 'second marriage', 'Hindu marriage', 'Islam', 'uniform civil code', 'Section 494']
+  },
+  {
+    caseName: 'Shamim Ara v. State of Uttar Pradesh',
+    citation: '(2002) 7 SCC 518',
+    court: 'Supreme Court',
+    year: 2002,
+    judges: ['R.C. Lahoti', 'Brijesh Kumar'],
+    summary: 'A Muslim husband claimed to have divorced his wife by pronouncing talaq but could not prove when or how the talaq was given. The wife denied that any talaq was ever pronounced.',
+    legalPrinciple: 'Talaq must be pronounced for a reasonable cause and must be preceded by attempts at reconciliation. A mere plea of talaq in a written statement before the court does not constitute a valid talaq. The talaq must be proved to have been actually pronounced.',
+    verdict: 'The Supreme Court held that talaq to be effective must be pronounced and the fact of pronouncement must be proved. A bald assertion in a written statement that talaq has been given is not sufficient. The talaq must follow the procedure prescribed by the Quran, including attempts at reconciliation.',
+    significance: 'Strengthened the procedural requirements for a valid talaq under Muslim personal law. Protected Muslim women from arbitrary and unilateral divorce claims. Laid the groundwork for later decisions on triple talaq.',
+    relatedSections: ['Section 125 CrPC'],
+    relatedActs: ['Muslim Personal Law (Shariat) Application Act, 1937', 'Code of Criminal Procedure, 1973'],
+    category: 'Family',
+    keywords: ['talaq', 'Muslim divorce', 'pronouncement', 'reconciliation', 'proof of talaq', 'Muslim women rights']
+  },
+  {
+    caseName: 'Mary Roy v. State of Kerala',
+    citation: 'AIR 1986 SC 1011',
+    court: 'Supreme Court',
+    year: 1986,
+    judges: ['P.N. Bhagwati', 'R.S. Pathak'],
+    summary: 'Mary Roy challenged the Travancore Christian Succession Act, 1916, and the Cochin Christian Succession Act, which denied Christian women in Kerala equal inheritance rights with men.',
+    legalPrinciple: 'The Indian Succession Act, 1925, which provides equal inheritance to sons and daughters, applies to Christians in the erstwhile Travancore and Cochin states. Discriminatory state succession laws stand superseded.',
+    verdict: 'The Supreme Court held that the Indian Succession Act, 1925, replaced the Travancore Christian Succession Act and the Cochin Christian Succession Act. Christian women in Kerala are entitled to equal share in ancestral property along with male heirs.',
+    significance: 'Landmark in gender equality for Christian women in Kerala who were previously denied equal inheritance. Established that central laws on succession override discriminatory regional personal laws. Mary Roy, mother of author Arundhati Roy, became a symbol of women\'s property rights.',
+    relatedSections: ['Article 14', 'Article 15'],
+    relatedActs: ['Indian Succession Act, 1925', 'Travancore Christian Succession Act, 1916', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['Christian women', 'inheritance', 'Kerala', 'Travancore', 'succession', 'gender equality', 'property rights']
+  },
+  {
+    caseName: 'Daniel Latifi v. Union of India',
+    citation: '(2001) 7 SCC 740',
+    court: 'Supreme Court',
+    year: 2001,
+    judges: ['G.B. Pattanaik', 'S. Rajendra Babu', 'D.P. Mohapatra', 'Doraiswamy Raju', 'Shivaraj V. Patil'],
+    summary: 'The constitutional validity of the Muslim Women (Protection of Rights on Divorce) Act, 1986, was challenged as it was perceived to dilute the rights recognized in Shah Bano\'s case.',
+    legalPrinciple: 'The Muslim Women (Protection of Rights on Divorce) Act, 1986, does not deny a divorced Muslim woman the right to fair and reasonable maintenance. The obligation on the husband includes making provision for her future as well, not just during the iddat period.',
+    verdict: 'The Supreme Court upheld the constitutional validity of the 1986 Act but interpreted it to mean that the husband must make reasonable and fair provision for the future of the divorced wife, which must be made within the iddat period. This effectively restored the Shah Bano position through creative interpretation.',
+    significance: 'Saved the 1986 Act from being struck down while effectively restoring the Shah Bano principle. Demonstrated the judiciary\'s ability to reconcile legislative intent with constitutional values through purposive interpretation.',
+    relatedSections: ['Section 125 CrPC', 'Article 14', 'Article 15', 'Article 21'],
+    relatedActs: ['Muslim Women (Protection of Rights on Divorce) Act, 1986', 'Code of Criminal Procedure, 1973', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['Muslim women', 'maintenance', 'divorce', 'Shah Bano', 'iddat', 'fair provision', 'constitutional validity']
+  },
+  {
+    caseName: 'Githa Hariharan v. Reserve Bank of India',
+    citation: '(1999) 2 SCC 228',
+    court: 'Supreme Court',
+    year: 1999,
+    judges: ['S. Saghir Ahmad', 'R.P. Sethi'],
+    summary: 'Githa Hariharan challenged the provision of the Hindu Minority and Guardianship Act, 1956, which designated the father as the natural guardian and the mother only "after" the father.',
+    legalPrinciple: 'The word "after" in Section 6(a) of the Hindu Minority and Guardianship Act, 1956, does not mean "after the death of" the father but includes situations where the father is absent or has neglected the child. The mother can also be the natural guardian during the father\'s lifetime.',
+    verdict: 'The Supreme Court interpreted Section 6(a) of the Hindu Minority and Guardianship Act to hold that the mother can be the natural guardian of a minor even during the lifetime of the father. The word "after" was read as "in the absence of" rather than "after the death of."',
+    significance: 'Promoted gender equality in guardianship law by recognizing the mother\'s equal right to be a natural guardian. Challenged the patriarchal assumption that only fathers can be natural guardians of children.',
+    relatedSections: ['Section 6(a) HMGA', 'Article 14', 'Article 15'],
+    relatedActs: ['Hindu Minority and Guardianship Act, 1956', 'Guardians and Wards Act, 1890', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['natural guardian', 'mother', 'father', 'guardianship', 'Hindu law', 'gender equality', 'minor child']
+  },
+  {
+    caseName: 'Lata Singh v. State of Uttar Pradesh',
+    citation: '(2006) 5 SCC 475',
+    court: 'Supreme Court',
+    year: 2006,
+    judges: ['Markandey Katju', 'Gyan Sudha Misra'],
+    summary: 'Lata Singh, an adult woman, married a man of her choice from a different caste. Her family opposed the marriage, filed criminal cases against her husband, and harassed the couple.',
+    legalPrinciple: 'An adult person has the right to marry anyone of their choice. Inter-caste marriages are legal and deserving of protection. Honour killings and intimidation of inter-caste or inter-religious couples are criminal acts punishable under law.',
+    verdict: 'The court upheld the right of an adult woman to marry a person of her choice irrespective of caste or community. It directed the administration to provide protection to inter-caste couples and held that family members who harass or threaten such couples are liable for criminal prosecution.',
+    significance: 'Strengthened the right to marry a person of one\'s choice as a fundamental right under Article 21. Condemned honour killings and caste-based violence. Directed states to take action against those who harass inter-caste couples.',
+    relatedSections: ['Article 21', 'Section 302 IPC', 'Section 506 IPC'],
+    relatedActs: ['Constitution of India', 'Special Marriage Act, 1954', 'Indian Penal Code, 1860'],
+    category: 'Family',
+    keywords: ['inter-caste marriage', 'honour killing', 'right to marry', 'adult consent', 'caste violence', 'personal liberty']
+  },
+  {
+    caseName: 'Lily Thomas v. Union of India',
+    citation: '(2000) 6 SCC 224',
+    court: 'Supreme Court',
+    year: 2000,
+    judges: ['R.C. Lahoti', 'Brijesh Kumar'],
+    summary: 'The case examined whether a Hindu man who converts to Islam solely to contract a second marriage without dissolving the first Hindu marriage can escape prosecution for bigamy.',
+    legalPrinciple: 'The second marriage of a Hindu husband after conversion to Islam without dissolving the first marriage under the Hindu Marriage Act is void in terms of Section 494 IPC. Personal law cannot be used as a shield for bigamy.',
+    verdict: 'The Supreme Court held that a Hindu husband who converts to Islam to marry again without obtaining a decree of divorce under the Hindu Marriage Act is guilty of bigamy under Section 494 IPC. The first marriage subsists and the second marriage is void.',
+    significance: 'Reinforced the Sarla Mudgal principle and prevented the misuse of religious conversion for contracting bigamous marriages. Protected the rights of the first wife under the Hindu Marriage Act.',
+    relatedSections: ['Section 494 IPC', 'Section 17 Hindu Marriage Act', 'Article 44'],
+    relatedActs: ['Hindu Marriage Act, 1955', 'Indian Penal Code, 1860', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['bigamy', 'conversion', 'second marriage', 'Hindu marriage', 'Islam', 'void marriage', 'Section 494']
+  },
+  {
+    caseName: 'V.D. Bhanot v. Savita Bhanot',
+    citation: '(2012) 3 SCC 183',
+    court: 'Supreme Court',
+    year: 2012,
+    judges: ['Altamas Kabir', 'Cyriac Joseph'],
+    summary: 'The question was whether the Protection of Women from Domestic Violence Act, 2005, applies to acts of domestic violence committed before the Act came into force.',
+    legalPrinciple: 'The Protection of Women from Domestic Violence Act, 2005, is applicable even if the acts of domestic violence were committed before the Act came into force, provided the aggrieved woman is in a domestic relationship at the time of filing the complaint.',
+    verdict: 'The Supreme Court held that the DV Act applies to marriages solemnized before the Act came into force. The Act is remedial in nature and applies to continuing domestic relationships where violence is ongoing, even if the marriage was solemnized before 2005.',
+    significance: 'Expanded the scope of the DV Act to cover pre-Act marriages and domestic violence. Ensured that women in long-standing marriages could also seek protection under the DV Act. Affirmed the remedial nature of the legislation.',
+    relatedSections: ['Section 2(a) DV Act', 'Section 3 DV Act', 'Section 12 DV Act'],
+    relatedActs: ['Protection of Women from Domestic Violence Act, 2005', 'Hindu Marriage Act, 1955'],
+    category: 'Family',
+    keywords: ['domestic violence', 'DV Act', 'pre-Act marriages', 'remedial legislation', 'married women', 'domestic relationship']
+  },
+  {
+    caseName: 'Rajesh Sharma v. State of Uttar Pradesh',
+    citation: '(2017) 10 SCC 472',
+    court: 'Supreme Court',
+    year: 2017,
+    judges: ['A.K. Goel', 'U.U. Lalit'],
+    summary: 'The Supreme Court addressed the widespread misuse of Section 498A IPC (cruelty by husband or relatives) and laid down guidelines to prevent automatic arrests and harassment of the accused.',
+    legalPrinciple: 'To prevent misuse of Section 498A IPC, Family Welfare Committees should be set up in every district to examine complaints before FIRs are registered. No arrest should be made without the committee\'s report unless the case involves tangible physical injuries or death.',
+    verdict: 'The court directed that Family Welfare Committees be established to examine complaints under Section 498A. Bail applications should be disposed of on the same day. No arrest should be made until the committee\'s report is received. Red corner notices or NBWs should not be issued routinely against NRI accused.',
+    significance: 'Attempted to balance protection of women from cruelty with safeguards against false cases. The directions were later modified by the Supreme Court in Social Action Forum case (2018) which restored the original provision.',
+    relatedSections: ['Section 498A IPC', 'Section 41 CrPC'],
+    relatedActs: ['Indian Penal Code, 1860', 'Code of Criminal Procedure, 1973'],
+    category: 'Family',
+    keywords: ['498A misuse', 'dowry harassment', 'family welfare committee', 'arrest guidelines', 'matrimonial dispute', 'cruelty']
+  },
+  {
+    caseName: 'Social Action Forum for Manav Adhikar v. Union of India',
+    citation: '(2018) 10 SCC 443',
+    court: 'Supreme Court',
+    year: 2018,
+    judges: ['Madan B. Lokur', 'S. Abdul Nazeer', 'Deepak Gupta'],
+    summary: 'This case reviewed the guidelines issued in Rajesh Sharma v. State of UP (2017) regarding the procedure for complaints under Section 498A IPC, which had diluted the provision.',
+    legalPrinciple: 'The directions in Rajesh Sharma requiring Family Welfare Committees and prohibiting arrest without committee reports were unconstitutional as they effectively created a pre-FIR filter not envisaged by the legislature. Section 498A remains a cognizable and non-bailable offence.',
+    verdict: 'The Supreme Court set aside the directions in Rajesh Sharma regarding the constitution of Family Welfare Committees. It held that the remedy against misuse of Section 498A lies in faithful implementation of existing legal provisions (Arnesh Kumar guidelines), not in creating new procedural hurdles.',
+    significance: 'Restored Section 498A to its original position as a cognizable and non-bailable offence. Reaffirmed that the legislative intent behind Section 498A must be respected. Directed reliance on Arnesh Kumar guidelines instead.',
+    relatedSections: ['Section 498A IPC', 'Section 41 CrPC', 'Section 41A CrPC'],
+    relatedActs: ['Indian Penal Code, 1860', 'Code of Criminal Procedure, 1973'],
+    category: 'Family',
+    keywords: ['498A', 'no automatic arrest', 'family welfare committee', 'Rajesh Sharma', 'cognizable offence', 'Arnesh Kumar']
+  },
+  {
+    caseName: 'Badshah v. Urmila Badshah Godse',
+    citation: '(2014) 1 SCC 188',
+    court: 'Supreme Court',
+    year: 2014,
+    judges: ['K.S. Radhakrishnan', 'Pinaki Chandra Ghose'],
+    summary: 'A woman in a void marriage (second wife) claimed maintenance for herself and her child under Section 125 CrPC. The question was whether a child born of a void or voidable marriage can be denied maintenance.',
+    legalPrinciple: 'The child born even out of a void marriage is a legitimate child and entitled to maintenance. The presumption of legitimacy under Section 16 of the Hindu Marriage Act attaches to children of void marriages. The purpose of Section 125 CrPC is to prevent vagrancy and destitution.',
+    verdict: 'The Supreme Court held that a child born out of a void or voidable marriage is entitled to maintenance under Section 125 CrPC. The court adopted a purposive interpretation to ensure that innocent children are not penalized for the actions of their parents.',
+    significance: 'Protected the rights of children born out of void marriages. Adopted a child-centric approach over strict legal technicalities. Reinforced the social welfare purpose of Section 125 CrPC.',
+    relatedSections: ['Section 125 CrPC', 'Section 16 Hindu Marriage Act'],
+    relatedActs: ['Code of Criminal Procedure, 1973', 'Hindu Marriage Act, 1955'],
+    category: 'Family',
+    keywords: ['child legitimacy', 'void marriage', 'maintenance', 'unmarried mother', 'Section 125', 'child rights']
+  },
+  {
+    caseName: 'ABC v. State (NCT of Delhi)',
+    citation: '(2015) 10 SCC 1',
+    court: 'Supreme Court',
+    year: 2015,
+    judges: ['Vikramajit Sen', 'A.M. Sapre'],
+    summary: 'An unwed mother sought to become the sole guardian of her child without disclosing the identity of the father, as required under the Guardians and Wards Act, 1890.',
+    legalPrinciple: 'An unwed mother has the right to be the sole legal guardian of her child without being compelled to disclose the identity of the father. Forcing disclosure of the father\'s identity violates the right to privacy of both the mother and the child.',
+    verdict: 'The Supreme Court held that an unwed mother can be the sole guardian of her child and is not required to disclose the identity of the putative father. The court read down the requirement under the Guardians and Wards Act that the father\'s consent must be obtained.',
+    significance: 'Recognized the rights of single mothers and unwed mothers. Protected the privacy and dignity of women who choose to raise children independently. Progressive interpretation of guardianship laws in the context of modern family structures.',
+    relatedSections: ['Section 11 Guardians and Wards Act', 'Article 21', 'Article 14'],
+    relatedActs: ['Guardians and Wards Act, 1890', 'Hindu Minority and Guardianship Act, 1956', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['single mother', 'guardianship', 'unwed mother', 'father identity', 'privacy', 'sole guardian', 'child welfare']
+  },
+  {
+    caseName: 'Narendra v. K. Meena',
+    citation: '(2016) 9 SCC 455',
+    court: 'Supreme Court',
+    year: 2016,
+    judges: ['Anil R. Dave', 'L. Nageswara Rao'],
+    summary: 'A wife insisted that the husband must live separately from his parents and family. The husband filed for divorce on the ground of cruelty under Section 13(1)(ia) of the Hindu Marriage Act.',
+    legalPrinciple: 'If a wife persistently demands that the husband should separate from his elderly parents and live separately, and makes life miserable for the husband if he does not comply, it amounts to cruelty within the meaning of Section 13(1)(ia) of the Hindu Marriage Act.',
+    verdict: 'The Supreme Court held that the wife\'s persistent demand to live separately from the husband\'s parents and her conduct in creating unbearable conditions constituted cruelty under Section 13(1)(ia). The court granted the husband a decree of divorce.',
+    significance: 'Recognized that cruelty in marriage is not confined to physical violence. Acknowledged the emotional dimension of the Indian joint family system. Held that unreasonable demands to separate elderly parents can constitute mental cruelty.',
+    relatedSections: ['Section 13(1)(ia) Hindu Marriage Act'],
+    relatedActs: ['Hindu Marriage Act, 1955'],
+    category: 'Family',
+    keywords: ['cruelty', 'wife', 'separation from parents', 'mental cruelty', 'divorce', 'joint family', 'elderly parents']
+  },
+  {
+    caseName: 'Sureshta Devi v. Om Prakash',
+    citation: '(1991) 2 SCC 25',
+    court: 'Supreme Court',
+    year: 1991,
+    judges: ['Sabyasachi Mukharji', 'S. Ranganathan'],
+    summary: 'The case considered whether consent for mutual divorce under Section 13B of the Hindu Marriage Act can be withdrawn before the second motion, and the mandatory nature of the cooling-off period.',
+    legalPrinciple: 'Consent given for mutual divorce under Section 13B of the Hindu Marriage Act can be withdrawn by either party at any time before the decree is passed. The six-month cooling-off period is mandatory and cannot be waived.',
+    verdict: 'The Supreme Court held that mutual consent for divorce under Section 13B must subsist at the time of the second motion as well. If either party withdraws consent before the final decree, the court cannot grant divorce by mutual consent. The six-month cooling-off period is mandatory.',
+    significance: 'Established that mutual consent divorce requires continuing consent throughout the process. The mandatory cooling-off period was meant to give parties time for reconciliation. This position was later modified by Amardeep Singh v. Harveen Kaur (2017).',
+    relatedSections: ['Section 13B Hindu Marriage Act'],
+    relatedActs: ['Hindu Marriage Act, 1955'],
+    category: 'Family',
+    keywords: ['mutual consent divorce', 'cooling off period', 'withdrawal of consent', 'Section 13B', 'second motion', 'reconciliation']
+  },
+  {
+    caseName: 'Amardeep Singh v. Harveen Kaur',
+    citation: '(2017) 8 SCC 746',
+    court: 'Supreme Court',
+    year: 2017,
+    judges: ['A.K. Goel', 'U.U. Lalit'],
+    summary: 'The question was whether the mandatory six-month cooling-off period under Section 13B(2) of the Hindu Marriage Act for mutual consent divorce can be waived by the court.',
+    legalPrinciple: 'The six-month cooling-off period under Section 13B(2) of the Hindu Marriage Act is directory, not mandatory. Family courts can waive the cooling-off period in appropriate cases where there is no possibility of reconciliation and the parties have been living separately.',
+    verdict: 'The Supreme Court held that the six-month cooling period under Section 13B(2) can be waived by the Family Court if the court is satisfied that the parties have settled all disputes and there is no chance of reconciliation. The court should exercise this power cautiously.',
+    significance: 'Overruled the rigid interpretation in Sureshta Devi and allowed courts to waive the cooling-off period. Reduced unnecessary delay and hardship for couples who have genuinely decided to part ways. Progressive interpretation of divorce law.',
+    relatedSections: ['Section 13B(2) Hindu Marriage Act'],
+    relatedActs: ['Hindu Marriage Act, 1955'],
+    category: 'Family',
+    keywords: ['cooling off period', 'waiver', 'mutual consent divorce', 'Section 13B', 'family court', 'reconciliation']
+  },
+  {
+    caseName: 'Revanasiddappa v. Mallikarjun',
+    citation: '(2011) 11 SCC 1',
+    court: 'Supreme Court',
+    year: 2011,
+    judges: ['G.S. Singhvi', 'Asok Kumar Ganguly'],
+    summary: 'The case concerned the property rights of children born out of void or voidable marriages and whether they can claim a share in the ancestral property of their parents.',
+    legalPrinciple: 'Children born out of void or voidable marriages are legitimate under Section 16 of the Hindu Marriage Act and have the right to claim a share in the self-acquired property of their parents. However, their rights in coparcenary property are subject to the law of the community.',
+    verdict: 'The Supreme Court held that illegitimate children legitimized under Section 16 of the Hindu Marriage Act have the right to property of their parents, both self-acquired and ancestral. The court directed that such children should not be penalized for the irregularity of their parents\' marriage.',
+    significance: 'Expanded the property rights of children born out of void or voidable marriages. Adopted a child-centric approach and ensured that children are not stigmatized or deprived of property rights due to the nature of their parents\' relationship.',
+    relatedSections: ['Section 16 Hindu Marriage Act', 'Article 14', 'Article 21'],
+    relatedActs: ['Hindu Marriage Act, 1955', 'Hindu Succession Act, 1956', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['illegitimate children', 'property rights', 'void marriage', 'Section 16', 'legitimacy', 'ancestral property']
+  },
+  {
+    caseName: 'Indra Sarma v. V.K.V. Sarma',
+    citation: '(2013) 15 SCC 755',
+    court: 'Supreme Court',
+    year: 2013,
+    judges: ['K.S. Radhakrishnan', 'Pinaki Chandra Ghose'],
+    summary: 'The case examined whether a woman in a live-in relationship is entitled to protection under the Protection of Women from Domestic Violence Act, 2005.',
+    legalPrinciple: 'Not all live-in relationships amount to a relationship in the nature of marriage for the purposes of the DV Act. The court laid down guidelines to determine when a live-in relationship qualifies as a relationship in the nature of marriage, including duration, shared household, pooling of resources, domestic arrangements, and intention of parties.',
+    verdict: 'The Supreme Court held that the DV Act provides protection only to women in live-in relationships that are "in the nature of marriage." A woman who knowingly enters into a relationship with a married man cannot claim the same protection as a wife. The court laid down factors to determine the nature of the relationship.',
+    significance: 'Defined the scope of live-in relationship protection under the DV Act. Distinguished between different types of live-in relationships. Provided a framework for courts to determine whether a live-in relationship qualifies as "in the nature of marriage."',
+    relatedSections: ['Section 2(f) DV Act', 'Section 3 DV Act'],
+    relatedActs: ['Protection of Women from Domestic Violence Act, 2005'],
+    category: 'Family',
+    keywords: ['live-in relationship', 'domestic violence', 'nature of marriage', 'DV Act', 'cohabitation', 'married man']
+  },
+  {
+    caseName: 'D. Velusamy v. D. Patchaiammal',
+    citation: '(2010) 10 SCC 469',
+    court: 'Supreme Court',
+    year: 2010,
+    judges: ['Markandey Katju', 'T.S. Thakur'],
+    summary: 'The case examined the prerequisites for a live-in relationship to qualify as a "relationship in the nature of marriage" for purposes of the Protection of Women from Domestic Violence Act, 2005.',
+    legalPrinciple: 'A "relationship in the nature of marriage" under the DV Act requires: (a) the couple must hold themselves out to society as being akin to spouses; (b) they must be of legal age to marry; (c) they must be otherwise qualified to enter into a legal marriage; (d) they must have voluntarily cohabited for a significant period of time; (e) they must have lived together in a shared household.',
+    verdict: 'The Supreme Court laid down five conditions that must be satisfied for a live-in relationship to qualify as a "relationship in the nature of marriage" under Section 2(f) of the DV Act. The court held that not every live-in relationship will amount to a relationship in the nature of marriage.',
+    significance: 'Provided the foundational test for distinguishing between live-in relationships that are "in the nature of marriage" and those that are not. This test has been applied in subsequent cases. Brought clarity to the interpretation of the DV Act regarding live-in relationships.',
+    relatedSections: ['Section 2(f) DV Act', 'Section 125 CrPC'],
+    relatedActs: ['Protection of Women from Domestic Violence Act, 2005', 'Code of Criminal Procedure, 1973'],
+    category: 'Family',
+    keywords: ['live-in relationship', 'nature of marriage', 'DV Act', 'cohabitation', 'shared household', 'domestic violence']
+  },
+  {
+    caseName: 'Danamma @ Suman Surpur v. Amar',
+    citation: '(2018) 3 SCC 343',
+    court: 'Supreme Court',
+    year: 2018,
+    judges: ['A.K. Sikri', 'Ashok Bhushan'],
+    summary: 'The case examined whether daughters who were born before the Hindu Succession (Amendment) Act, 2005, could claim coparcenary rights in ancestral property.',
+    legalPrinciple: 'Under Section 6 of the Hindu Succession Act, as amended in 2005, a daughter of a coparcener shall by birth become a coparcener in the same manner as the son. This right accrues by birth and is not dependent on whether the father was alive on the date of the amendment.',
+    verdict: 'The Supreme Court held that daughters have coparcenary rights by birth and are entitled to equal share in Hindu ancestral property. The rights conferred by the 2005 Amendment are not contingent on the father being alive on the date of the amendment.',
+    significance: 'Strengthened the equal property rights of Hindu daughters. Clarified that the 2005 Amendment to the Hindu Succession Act confers coparcenary rights by birth, not from the date of the amendment. Precursor to the more definitive Vineeta Sharma ruling.',
+    relatedSections: ['Section 6 Hindu Succession Act'],
+    relatedActs: ['Hindu Succession Act, 1956', 'Hindu Succession (Amendment) Act, 2005'],
+    category: 'Family',
+    keywords: ['coparcenary rights', 'daughters', 'Hindu succession', 'ancestral property', 'equal share', 'birth right']
+  },
+  {
+    caseName: 'Vineeta Sharma v. Rakesh Sharma',
+    citation: '(2020) 9 SCC 1',
+    court: 'Supreme Court',
+    year: 2020,
+    judges: ['Arun Mishra', 'S. Abdul Nazeer', 'M.R. Shah'],
+    summary: 'A three-judge bench settled the conflicting interpretations regarding whether the coparcenary rights of daughters under the Hindu Succession (Amendment) Act, 2005, are retrospective or prospective.',
+    legalPrinciple: 'The Hindu Succession (Amendment) Act, 2005, confers coparcenary rights on daughters by birth. Since the right is by birth, it is not dependent on whether the father coparcener was living on September 9, 2005 (date of amendment). The amendment is retrospective in operation.',
+    verdict: 'The Supreme Court held that the coparcenary right of a daughter is by birth and the amendment of 2005 is retrospective in nature. It overruled Prakash v. Phulavati (2016) to the extent it held that the living status of the father on the date of amendment was relevant. A daughter has the same coparcenary rights as a son from birth.',
+    significance: 'Definitively settled the controversy on the retrospective nature of the 2005 Amendment. Overruled conflicting decisions. Ensured that daughters born before the amendment can also claim coparcenary rights. Landmark in Hindu succession law.',
+    relatedSections: ['Section 6 Hindu Succession Act'],
+    relatedActs: ['Hindu Succession Act, 1956', 'Hindu Succession (Amendment) Act, 2005'],
+    category: 'Family',
+    keywords: ['coparcenary rights', 'Hindu succession', 'retrospective', 'daughters rights', 'ancestral property', 'Section 6', 'Vineeta Sharma']
+  },
+  {
+    caseName: 'Prakash v. Phulavati',
+    citation: '(2016) 2 SCC 36',
+    court: 'Supreme Court',
+    year: 2016,
+    judges: ['Anil R. Dave', 'A.K. Goel'],
+    summary: 'The case examined whether the coparcenary rights conferred on daughters by the 2005 Amendment to the Hindu Succession Act apply when the father coparcener had died before the amendment came into force.',
+    legalPrinciple: 'The rights under the Hindu Succession (Amendment) Act, 2005, are prospective in nature and are applicable only if the coparcener father was alive on September 9, 2005, when the amendment came into force.',
+    verdict: 'The Supreme Court held that the amended Section 6 of the Hindu Succession Act applies prospectively and the coparcener father must be living on the date of the amendment for daughters to claim coparcenary rights. If the father died before September 9, 2005, the daughter cannot claim coparcenary rights.',
+    significance: 'Though later overruled by Vineeta Sharma v. Rakesh Sharma (2020), this was a significant interpretation of the 2005 Amendment. Created uncertainty that was only settled four years later by the three-judge bench.',
+    relatedSections: ['Section 6 Hindu Succession Act'],
+    relatedActs: ['Hindu Succession Act, 1956', 'Hindu Succession (Amendment) Act, 2005'],
+    category: 'Family',
+    keywords: ['coparcenary', 'Hindu succession', 'prospective', 'daughters rights', 'father alive', 'Section 6', 'overruled']
+  },
+
+  // =============================================
+  // CIVIL LAW VERDICTS
+  // =============================================
+  {
+    caseName: 'Vidyadhari v. Sukhrana Bai',
+    citation: '(2008) 2 SCC 427',
+    court: 'Supreme Court',
+    year: 2008,
+    judges: ['S.B. Sinha', 'Cyriac Joseph'],
+    summary: 'The case concerned the property rights of a woman who had been in a long-term live-in relationship and had children from the relationship, after the death of her partner.',
+    legalPrinciple: 'When a man and woman have lived together as husband and wife for a long period and have children, a presumption of marriage arises under Section 114 of the Indian Evidence Act. Children of such a relationship have a right to inherit the property of their parents.',
+    verdict: 'The Supreme Court held that the children from a long-term live-in relationship are entitled to inherit the property of their father. The court applied the presumption of marriage and recognized the property rights of children born out of such relationships.',
+    significance: 'Recognized property rights arising from long-term live-in relationships. Applied the presumption of marriage to protect the rights of children. Extended the understanding of family beyond formal marriage.',
+    relatedSections: ['Section 114 Indian Evidence Act', 'Section 16 Hindu Marriage Act'],
+    relatedActs: ['Indian Evidence Act, 1872', 'Hindu Marriage Act, 1955', 'Hindu Succession Act, 1956'],
+    category: 'Civil',
+    keywords: ['live-in relationship', 'property rights', 'presumption of marriage', 'children rights', 'inheritance', 'cohabitation']
+  },
+  {
+    caseName: 'Jose Paulo Coutinho v. Maria Luiza Valentina Pereira',
+    citation: '(2019) 12 SCC 370',
+    court: 'Supreme Court',
+    year: 2019,
+    judges: ['Uday Umesh Lalit', 'Vineet Saran'],
+    summary: 'The case examined the succession laws applicable to Goan citizens, specifically whether the Portuguese Civil Code, 1867, which provides for equal succession rights, continues to apply in Goa.',
+    legalPrinciple: 'The Portuguese Civil Code, 1867, which provides for equal succession rights to men and women, continues to apply in Goa and has not been superseded by the Hindu Succession Act, 1956. Goa is the only state in India with a Uniform Civil Code.',
+    verdict: 'The Supreme Court held that the succession laws under the Portuguese Civil Code continue to apply in Goa and have not been replaced by the Indian Succession Act or the Hindu Succession Act. All Goan citizens, regardless of religion, are governed by the same succession laws.',
+    significance: 'Highlighted Goa as the only state in India with a functioning Uniform Civil Code. Recognized the progressive nature of the Portuguese Civil Code in providing equal rights. Relevant to the Article 44 debate on a national Uniform Civil Code.',
+    relatedSections: ['Article 44', 'Section 5(1) Portuguese Civil Code'],
+    relatedActs: ['Portuguese Civil Code, 1867', 'Hindu Succession Act, 1956', 'Constitution of India'],
+    category: 'Civil',
+    keywords: ['Goa', 'uniform civil code', 'Portuguese Civil Code', 'succession', 'equal rights', 'Goan law']
+  },
+  {
+    caseName: 'Laxmibai v. Bhagwantbuva',
+    citation: '(2013) 4 SCC 97',
+    court: 'Supreme Court',
+    year: 2013,
+    judges: ['R.M. Lodha', 'Madan B. Lokur'],
+    summary: 'The case dealt with the rights in Hindu joint family property and the distinction between ancestral property and self-acquired property for the purposes of partition.',
+    legalPrinciple: 'In a Hindu joint family, property inherited from the father, grandfather, or great-grandfather constitutes ancestral property. A coparcener has a right to seek partition of ancestral property. Self-acquired property of a Hindu can be disposed of by will.',
+    verdict: 'The Supreme Court held that ancestral property in a Hindu joint family is subject to partition among coparceners. The court distinguished between ancestral and self-acquired property and reaffirmed that a coparcener acquires an interest by birth in the coparcenary property.',
+    significance: 'Clarified the distinction between ancestral and self-acquired property in Hindu law. Reinforced the rights of coparceners in joint family property. Important reference for Hindu joint family property disputes.',
+    relatedSections: ['Section 6 Hindu Succession Act', 'Section 30 Hindu Succession Act'],
+    relatedActs: ['Hindu Succession Act, 1956', 'Hindu Succession (Amendment) Act, 2005'],
+    category: 'Civil',
+    keywords: ['Hindu joint family', 'ancestral property', 'coparcener', 'partition', 'self-acquired property', 'Hindu succession']
+  },
+  {
+    caseName: 'Food Corporation of India v. Kamdhenu Cattle Feed Industries',
+    citation: '(1993) 1 SCC 71',
+    court: 'Supreme Court',
+    year: 1993,
+    judges: ['M.N. Venkatachaliah', 'S. Mohan'],
+    summary: 'The case involved a tender process and the scope of judicial review of administrative decisions relating to award of government contracts.',
+    legalPrinciple: 'The award of a government contract through tender does not give rise to enforceable rights in private law. Courts should exercise restraint in reviewing commercial decisions of government bodies and should not interfere unless there is arbitrariness or mala fides.',
+    verdict: 'The Supreme Court held that the government is free to enter into contracts with parties it finds suitable and courts should not sit in appeal over such decisions. However, the process must be fair, transparent, and free from arbitrariness. The court cannot interfere with the exercise of commercial discretion.',
+    significance: 'Established the scope of judicial review in government contract matters. Balanced the need for accountability with the operational freedom required in commercial decisions. A frequently cited case in government procurement disputes.',
+    relatedSections: ['Article 14', 'Article 19(1)(g)', 'Section 73 Indian Contract Act'],
+    relatedActs: ['Indian Contract Act, 1872', 'Constitution of India'],
+    category: 'Civil',
+    keywords: ['government contract', 'tender', 'judicial review', 'arbitrariness', 'commercial decision', 'FCI']
+  },
+  {
+    caseName: 'Indian Oil Corporation Ltd. v. Amritsar Gas Service',
+    citation: '(1991) 1 SCC 533',
+    court: 'Supreme Court',
+    year: 1991,
+    judges: ['M.N. Venkatachaliah', 'N.M. Kasliwal'],
+    summary: 'The case examined the enforceability of arbitration clauses in government contracts and the circumstances under which the State can be compelled to invoke arbitration.',
+    legalPrinciple: 'Every civil or commercial dispute, including those involving government entities, which is covered by an arbitration clause must be referred to arbitration. The State cannot refuse to invoke an arbitration clause in its own contract simply because it does not wish to arbitrate.',
+    verdict: 'The Supreme Court held that where a contract contains an arbitration clause, the parties are bound to refer disputes to arbitration. The State cannot take an inconsistent stand and refuse to invoke the arbitration clause. The court directed the disputes to be referred to arbitration as per the contract.',
+    significance: 'Strengthened the enforceability of arbitration clauses, especially in government contracts. Prevented the State from using its dominant position to avoid contractual obligations. Promoted arbitration as an effective dispute resolution mechanism.',
+    relatedSections: ['Section 8 Arbitration Act', 'Section 11 Arbitration Act'],
+    relatedActs: ['Arbitration Act, 1940', 'Indian Contract Act, 1872'],
+    category: 'Civil',
+    keywords: ['arbitration clause', 'government contract', 'Indian Oil', 'dispute resolution', 'enforceability', 'State obligation']
+  },
+  {
+    caseName: 'Oil and Natural Gas Corporation Ltd. v. Saw Pipes Ltd.',
+    citation: '(2003) 5 SCC 705',
+    court: 'Supreme Court',
+    year: 2003,
+    judges: ['R.C. Lahoti', 'Ashok Bhan', 'Arijit Pasayat'],
+    summary: 'The case examined the scope of judicial review of arbitral awards under Section 34 of the Arbitration and Conciliation Act, 1996, and whether "patent illegality" is a ground for setting aside an award.',
+    legalPrinciple: 'An arbitral award can be set aside under Section 34 of the Arbitration Act if it is patently illegal, i.e., the illegality goes to the root of the matter and is so unfair and unreasonable that it shocks the judicial conscience. Patent illegality appearing on the face of the award is a ground under "public policy of India."',
+    verdict: 'The Supreme Court held that the term "public policy of India" in Section 34(2)(b)(ii) includes patent illegality. An award which is patently illegal, contrary to the substantive law governing the parties, or contrary to the terms of the contract can be set aside.',
+    significance: 'Expanded the scope of judicial review of arbitral awards by introducing the concept of "patent illegality." This was a significant development as it allowed wider court interference in arbitration. The 2015 Amendment to the Arbitration Act partially addressed this by clarifying the scope.',
+    relatedSections: ['Section 34 Arbitration Act', 'Section 28 Arbitration Act'],
+    relatedActs: ['Arbitration and Conciliation Act, 1996'],
+    category: 'Civil',
+    keywords: ['arbitration', 'patent illegality', 'public policy', 'ONGC', 'Saw Pipes', 'Section 34', 'arbitral award']
+  },
+  {
+    caseName: 'Bharat Aluminium Co. v. Kaiser Aluminium Technical Services Inc.',
+    citation: '(2012) 9 SCC 552',
+    court: 'Supreme Court',
+    year: 2012,
+    judges: ['S.H. Kapadia', 'Aftab Alam', 'K.S. Radhakrishnan', 'Swatanter Kumar', 'Surinder Singh Nijjar'],
+    summary: 'A five-judge Constitution Bench examined whether Part I of the Arbitration and Conciliation Act, 1996, applies to international commercial arbitrations seated outside India.',
+    legalPrinciple: 'Part I of the Arbitration and Conciliation Act, 1996, applies only to arbitrations seated in India. Indian courts have no jurisdiction to grant interim measures or set aside awards in foreign-seated arbitrations. The seat of arbitration determines the supervisory jurisdiction.',
+    verdict: 'The Supreme Court overruled Bhatia International v. Bulk Trading (2002) and held that Part I of the Arbitration Act, 1996, does not apply to international commercial arbitrations held outside India. Indian courts cannot grant interim relief or interfere with arbitrations seated abroad.',
+    significance: 'Brought Indian arbitration law in line with international standards by recognizing the seat theory. Overruled the much-criticized Bhatia International decision. Reduced excessive judicial intervention in international arbitrations and made India a more attractive arbitration destination.',
+    relatedSections: ['Section 2(2) Arbitration Act', 'Section 9 Arbitration Act', 'Section 34 Arbitration Act'],
+    relatedActs: ['Arbitration and Conciliation Act, 1996', 'UNCITRAL Model Law on International Commercial Arbitration'],
+    category: 'Civil',
+    keywords: ['BALCO', 'international arbitration', 'seat of arbitration', 'Part I', 'Bhatia International', 'foreign seated', 'supervisory jurisdiction']
+  },
+  {
+    caseName: 'Amazon.com NV Investment Holdings LLC v. Future Coupons Pvt. Ltd.',
+    citation: '(2022) 1 SCC 209',
+    court: 'Supreme Court',
+    year: 2021,
+    judges: ['R.F. Nariman', 'B.R. Gavai', 'A.S. Bopanna'],
+    summary: 'Amazon challenged the Future Group-Reliance deal before an emergency arbitrator at the Singapore International Arbitration Centre (SIAC). The issue was whether an emergency arbitrator\'s order is enforceable in India.',
+    legalPrinciple: 'An order passed by an emergency arbitrator under institutional rules is enforceable in India under Section 17(1) of the Arbitration and Conciliation Act, 1996. An emergency arbitrator qualifies as an "arbitral tribunal" under the Act.',
+    verdict: 'The Supreme Court held that an emergency arbitrator\'s order is an order under Section 17(1) of the Arbitration Act and is enforceable in India. The court upheld the emergency arbitrator\'s interim order restraining the Future-Reliance deal and held Future Group in violation.',
+    significance: 'First Supreme Court decision recognizing the enforceability of emergency arbitration awards in India. Strengthened the institutional arbitration framework and brought Indian law in line with global practices. Had major commercial impact on one of India\'s biggest corporate deals.',
+    relatedSections: ['Section 17(1) Arbitration Act', 'Section 17(2) Arbitration Act'],
+    relatedActs: ['Arbitration and Conciliation Act, 1996', 'SIAC Rules'],
+    category: 'Civil',
+    keywords: ['emergency arbitration', 'Amazon', 'Future Group', 'Reliance', 'SIAC', 'Section 17', 'interim order', 'enforceability']
+  },
+
+  // =============================================
+  // ADDITIONAL CIVIL/FAMILY CASES
+  // =============================================
+  {
+    caseName: 'S. Khushboo v. Kanniammal',
+    citation: '(2010) 5 SCC 600',
+    court: 'Supreme Court',
+    year: 2010,
+    judges: ['Dalveer Bhandari', 'K.S. Radhakrishnan'],
+    summary: 'Actress Khushboo was prosecuted for making statements in an interview that living together without marriage is acceptable and that pre-marital sex is not an offence.',
+    legalPrinciple: 'Living together without marriage is not an offence. The right to freedom of speech and expression under Article 19(1)(a) includes the right to express views on morality and social issues. A live-in relationship between consenting adults is not illegal.',
+    verdict: 'The Supreme Court quashed all criminal proceedings against Khushboo. The court held that living together is a right to life under Article 21 and no criminal case can be filed against a person for expressing views on live-in relationships or pre-marital sex.',
+    significance: 'Affirmed the legality of live-in relationships in India. Protected freedom of expression on social issues. Recognized that personal choices of consenting adults cannot be criminalized.',
+    relatedSections: ['Article 19(1)(a)', 'Article 21'],
+    relatedActs: ['Constitution of India', 'Indian Penal Code, 1860'],
+    category: 'Family',
+    keywords: ['live-in relationship', 'free speech', 'pre-marital sex', 'personal liberty', 'consenting adults', 'morality']
+  },
+  {
+    caseName: 'Supriyo @ Supriya Chakraborty v. Union of India',
+    citation: '(2023) SCC OnLine SC 1348',
+    court: 'Supreme Court',
+    year: 2023,
+    judges: ['D.Y. Chandrachud', 'Sanjay Kishan Kaul', 'S. Ravindra Bhat', 'Hima Kohli', 'P.S. Narasimha'],
+    summary: 'Petitions by same-sex couples seeking legal recognition of same-sex marriages under the Special Marriage Act, 1954, and other personal laws.',
+    legalPrinciple: 'While queer persons have fundamental rights to equality, non-discrimination, and dignity, the right to marry is not an unqualified fundamental right. The regulation of marriage falls within the legislative domain and courts cannot create a new institution of marriage.',
+    verdict: 'The Supreme Court, by a 3-2 majority, declined to grant legal recognition to same-sex marriages. However, the court recognized the rights of queer couples to cohabit, the right against discrimination, and directed the government to constitute a committee to examine rights of same-sex couples. The Chief Justice\'s minority opinion favored recognition under the Special Marriage Act.',
+    significance: 'While denying marriage equality, the court made significant observations on queer rights, non-discrimination, and the right to choose a partner. Directed steps for protecting queer persons from discrimination. Left the door open for future legislative action.',
+    relatedSections: ['Article 14', 'Article 15', 'Article 19', 'Article 21'],
+    relatedActs: ['Special Marriage Act, 1954', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['same-sex marriage', 'LGBTQ rights', 'marriage equality', 'queer rights', 'Special Marriage Act', 'non-discrimination']
+  },
+  {
+    caseName: 'Shilpa Sailesh v. Varun Sreenivasan',
+    citation: '(2023) 2 SCC 453',
+    court: 'Supreme Court',
+    year: 2023,
+    judges: ['Sanjay Kishan Kaul', 'Sanjiv Khanna', 'A.S. Oka', 'Vikram Nath', 'J.K. Maheshwari'],
+    summary: 'A five-judge Constitution Bench examined whether the Supreme Court can directly grant divorce under Article 142 when the marriage has irretrievably broken down, without requiring the parties to go through the mutual consent procedure under Section 13B of the Hindu Marriage Act.',
+    legalPrinciple: 'The Supreme Court can exercise its power under Article 142 to grant divorce on the ground of irretrievable breakdown of marriage, even without waiting for the mandatory cooling-off period under Section 13B(2). The court is not bound by the statutory waiting period.',
+    verdict: 'The five-judge bench held that the Supreme Court can exercise its extraordinary power under Article 142 to dissolve a marriage on the ground of irretrievable breakdown, dispensing with the requirement of mutual consent and the six-month cooling-off period. The court laid down guidelines for exercising this power.',
+    significance: 'Landmark decision that streamlined the divorce process in hopeless marriages. Reduced prolonged litigation and suffering of parties in irretrievably broken marriages. Established a humanitarian approach to divorce jurisprudence.',
+    relatedSections: ['Article 142', 'Section 13B Hindu Marriage Act'],
+    relatedActs: ['Hindu Marriage Act, 1955', 'Constitution of India'],
+    category: 'Family',
+    keywords: ['irretrievable breakdown', 'Article 142', 'divorce', 'cooling off period', 'mutual consent', 'Supreme Court power']
+  },
+  {
+    caseName: 'Satish Chander Ahuja v. Sneha Ahuja',
+    citation: '(2020) 13 SCC 54',
+    court: 'Supreme Court',
+    year: 2020,
+    judges: ['Ashok Bhushan', 'R. Subhash Reddy'],
+    summary: 'The case examined the definition of "shared household" under Section 2(s) of the Protection of Women from Domestic Violence Act, 2005, and whether a daughter-in-law can claim right of residence in her in-laws\' house.',
+    legalPrinciple: 'A shared household under the DV Act includes a household where the aggrieved person lives or has lived in a domestic relationship, regardless of ownership. However, the right to residence under Section 17 is not an indefeasible right if the property is owned by the in-laws.',
+    verdict: 'The Supreme Court clarified that a shared household includes any house where the wife has lived with her husband, including the husband\'s parental home. However, the court distinguished between the right of residence (which is not absolute) and the right to seek protection under the DV Act.',
+    significance: 'Clarified the scope of "shared household" under the DV Act. Balanced the rights of the aggrieved woman with the property rights of the in-laws. Important for domestic violence cases involving joint family properties.',
+    relatedSections: ['Section 2(s) DV Act', 'Section 17 DV Act', 'Section 19 DV Act'],
+    relatedActs: ['Protection of Women from Domestic Violence Act, 2005'],
+    category: 'Family',
+    keywords: ['shared household', 'domestic violence', 'right of residence', 'daughter-in-law', 'DV Act', 'in-laws property']
+  },
+  {
+    caseName: 'K. Srinivas Rao v. D.A. Deepa',
+    citation: '(2013) 5 SCC 226',
+    court: 'Supreme Court',
+    year: 2013,
+    judges: ['Aftab Alam', 'Ranjana Prakash Desai'],
+    summary: 'The case examined whether prolonged separation and irreconcilable differences between spouses, resulting in mental cruelty, can be a ground for divorce under the Hindu Marriage Act.',
+    legalPrinciple: 'When a marriage is dead for all practical purposes and there is no likelihood of the parties resuming cohabitation, it is cruelty to compel them to live together. Continued acrimony and discord between spouses constitutes mental cruelty.',
+    verdict: 'The Supreme Court granted a decree of divorce holding that the marriage had broken down irretrievably. The court observed that in such cases, preserving the marriage would be cruel to both parties. The court dissolved the marriage using its power under Article 142.',
+    significance: 'Recognized irretrievable breakdown of marriage as a form of cruelty. Advanced the jurisprudence on mental cruelty in matrimonial disputes. Demonstrated the use of Article 142 to do complete justice in family matters.',
+    relatedSections: ['Section 13(1)(ia) Hindu Marriage Act', 'Article 142'],
+    relatedActs: ['Hindu Marriage Act, 1955', 'Constitution of India'],
+    category: 'Civil',
+    keywords: ['irretrievable breakdown', 'mental cruelty', 'divorce', 'Article 142', 'matrimonial dispute', 'separation']
+  },
+  {
+    caseName: 'Rajnesh v. Neha',
+    citation: '(2021) 2 SCC 324',
+    court: 'Supreme Court',
+    year: 2021,
+    judges: ['Indu Malhotra', 'Ajay Rastogi'],
+    summary: 'The Supreme Court laid down comprehensive guidelines for the determination of maintenance in matrimonial matters, covering both interim and permanent maintenance.',
+    legalPrinciple: 'The court prescribed overlapping jurisdiction criteria, mandatory disclosure of income and assets through affidavits, a date from which maintenance should be awarded, criteria for quantifying maintenance, enforcement mechanisms, and guidelines to prevent forum shopping.',
+    verdict: 'The court issued detailed guidelines including: (1) mandatory disclosure of assets and income by both parties; (2) criteria for computing maintenance (status, needs, reasonable wants, income, property, lifestyle); (3) maintenance should be from the date of application; (4) interim maintenance within an outer limit; (5) no double dipping across multiple forums.',
+    significance: 'Brought uniformity and predictability to maintenance determination across India. Addressed the practical problem of husbands concealing income and assets. Comprehensive guidelines that cover CrPC, Hindu Adoption and Maintenance Act, and DV Act proceedings.',
+    relatedSections: ['Section 125 CrPC', 'Section 24 Hindu Marriage Act', 'Section 20 DV Act'],
+    relatedActs: ['Code of Criminal Procedure, 1973', 'Hindu Marriage Act, 1955', 'Hindu Adoptions and Maintenance Act, 1956', 'Protection of Women from Domestic Violence Act, 2005'],
+    category: 'Civil',
+    keywords: ['maintenance guidelines', 'alimony', 'income disclosure', 'matrimonial maintenance', 'interim maintenance', 'Rajnesh guidelines']
+  },
+  {
+    caseName: 'Associate Builders v. Delhi Development Authority',
+    citation: '(2015) 3 SCC 49',
+    court: 'Supreme Court',
+    year: 2015,
+    judges: ['Rohinton F. Nariman', 'J. Chelameswar'],
+    summary: 'The case examined the scope of judicial review of arbitral awards under Section 34 of the Arbitration and Conciliation Act, 1996, and the meaning of "public policy of India" as a ground to set aside awards.',
+    legalPrinciple: 'An arbitral award can be set aside on the ground of public policy only if it is: (a) contrary to the fundamental policy of Indian law; (b) contrary to the interest of India; (c) contrary to justice or morality; or (d) patently illegal. The court must adopt a hands-off approach and not re-appreciate evidence.',
+    verdict: 'The Supreme Court clarified that patent illegality means an error that goes to the root of the matter and not a mere erroneous interpretation. The court held that re-appreciation of evidence by the court is impermissible while reviewing an arbitral award under Section 34.',
+    significance: 'Narrowed the scope of judicial interference in arbitral awards. Reinforced the pro-arbitration approach of Indian courts. Important for the development of arbitration jurisprudence in India alongside the 2015 Amendment to the Act.',
+    relatedSections: ['Section 34 Arbitration Act', 'Section 28 Arbitration Act'],
+    relatedActs: ['Arbitration and Conciliation Act, 1996'],
+    category: 'Civil',
+    keywords: ['arbitration', 'public policy', 'Section 34', 'patent illegality', 'judicial review', 'arbitral award', 'evidence']
+  },
+  {
+    caseName: 'Avitel Post Studioz Ltd. v. HSBC PI Holdings (Mauritius) Ltd.',
+    citation: '(2021) 4 SCC 713',
+    court: 'Supreme Court',
+    year: 2021,
+    judges: ['Rohinton F. Nariman', 'B.R. Gavai'],
+    summary: 'The case examined whether an allegation of fraud vitiating the underlying contract also vitiates the arbitration agreement, and whether such disputes are arbitrable.',
+    legalPrinciple: 'An arbitration clause in a contract survives even when the underlying contract is alleged to be void on account of fraud. The doctrine of separability applies and the arbitration agreement is treated as independent. Allegations of fraud are arbitrable unless they constitute criminal fraud involving the public domain.',
+    verdict: 'The Supreme Court held that fraud simpliciter relating to a contract is arbitrable. The doctrine of separability means the arbitration clause survives independently. Only fraud that vitiates the arbitration clause itself, or fraud in the public domain requiring criminal investigation, is non-arbitrable.',
+    significance: 'Clarified the scope of arbitrability of fraud disputes in India. Applied the doctrine of separability. Overruled the broader ratio of N. Radhakrishnan v. Maestro Engineers (2010) which held fraud disputes to be non-arbitrable. Pro-arbitration development.',
+    relatedSections: ['Section 8 Arbitration Act', 'Section 16 Arbitration Act'],
+    relatedActs: ['Arbitration and Conciliation Act, 1996', 'Indian Contract Act, 1872'],
+    category: 'Civil',
+    keywords: ['arbitrability', 'fraud', 'separability', 'arbitration agreement', 'voidable contract', 'HSBC']
+  },
+  {
+    caseName: 'Smt. Seema v. Ashwani Kumar',
+    citation: '(2006) 2 SCC 578',
+    court: 'Supreme Court',
+    year: 2006,
+    judges: ['Arijit Pasayat', 'S.H. Kapadia'],
+    summary: 'The Supreme Court examined the need for compulsory registration of marriages in India across all religions and communities to protect the rights of women.',
+    legalPrinciple: 'All marriages, irrespective of religion, must be compulsorily registered. Registration of marriages is essential to prevent child marriages, ensure legal rights of women, and check bigamy. The states must frame rules for compulsory registration.',
+    verdict: 'The Supreme Court directed all states and Union Territories to frame rules for compulsory registration of marriages within three months. The court held that registration of marriages is a measure of social welfare and would serve as a proof of marriage.',
+    significance: 'Made compulsory registration of marriages a nationwide requirement. Protected women\'s rights by ensuring proof of marriage. Helped in combating child marriages and bigamy. Directed all states to create a framework for marriage registration.',
+    relatedSections: ['Article 21', 'Article 14'],
+    relatedActs: ['Hindu Marriage Act, 1955', 'Special Marriage Act, 1954', 'Indian Christian Marriage Act, 1872', 'Constitution of India'],
+    category: 'Civil',
+    keywords: ['marriage registration', 'compulsory registration', 'women rights', 'child marriage', 'bigamy', 'proof of marriage']
+  },
+  {
+    caseName: 'Alka Gupta v. Narender Kumar Gupta',
+    citation: 'AIR 2010 Delhi 170',
+    court: 'High Court',
+    highCourtName: 'Delhi High Court',
+    year: 2010,
+    judges: ['Kailash Gambhir'],
+    summary: 'The Delhi High Court examined whether the inability of a wife to cook food and perform household chores can constitute cruelty for the purpose of divorce under the Hindu Marriage Act.',
+    legalPrinciple: 'The mere inability or unwillingness of a wife to perform household chores such as cooking does not constitute cruelty under Section 13(1)(ia) of the Hindu Marriage Act. Marriage is a partnership and household duties cannot be imposed as a unilateral obligation on the wife.',
+    verdict: 'The Delhi High Court dismissed the husband\'s petition for divorce on the ground that the wife\'s inability to cook food does not amount to cruelty. The court held that mutual responsibilities in a marriage cannot be gender-specific.',
+    significance: 'Progressive interpretation of cruelty in the context of gender roles. Rejected the patriarchal notion that cooking and household chores are solely the wife\'s duty. Important precedent for gender equality in matrimonial law.',
+    relatedSections: ['Section 13(1)(ia) Hindu Marriage Act'],
+    relatedActs: ['Hindu Marriage Act, 1955'],
+    category: 'Family',
+    keywords: ['cruelty', 'cooking', 'household chores', 'gender roles', 'divorce', 'mental cruelty', 'marriage partnership']
+  },
+  {
+    caseName: 'Roxann Sharma v. Arun Sharma',
+    citation: '(2015) 8 SCC 318',
+    court: 'Supreme Court',
+    year: 2015,
+    judges: ['Vikramajit Sen', 'A.M. Sapre'],
+    summary: 'A mother sought custody of her infant child from the father who had taken the child away. The case examined the paramount consideration of the welfare of the child in custody disputes.',
+    legalPrinciple: 'In custody matters, the paramount consideration is the welfare of the child. A child of tender years, especially an infant, ordinarily should be with the mother unless exceptional circumstances exist. The biological and emotional needs of a young child require maternal care.',
+    verdict: 'The Supreme Court directed that the custody of the infant child be given to the mother. The court held that the welfare of the child is the paramount consideration and a child of such tender age requires the care and nurturing of the mother.',
+    significance: 'Reaffirmed the doctrine of tender years presumption in child custody cases. Emphasized the importance of maternal care for infants. Strengthened the principle that child welfare trumps parental rights in custody disputes.',
+    relatedSections: ['Section 6 HMGA', 'Section 13 Guardians and Wards Act'],
+    relatedActs: ['Hindu Minority and Guardianship Act, 1956', 'Guardians and Wards Act, 1890'],
+    category: 'Family',
+    keywords: ['child custody', 'tender years', 'welfare of child', 'maternal care', 'infant custody', 'guardianship']
+  }
+];
+
+async function seedVerdicts() {
+  try {
+    await mongoose.connect(MONGODB_URI);
+    console.log('[seedVerdictsCivilFamily] Connected to MongoDB');
+
+    // Delete existing Civil and Family category verdicts to prevent duplicates
+    const deleteResult = await CourtVerdict.deleteMany({ category: { $in: ['Civil', 'Family'] } });
+    console.log('[seedVerdictsCivilFamily] Deleted ' + deleteResult.deletedCount + ' existing Civil/Family verdicts');
+
+    // Insert new verdicts
+    const insertResult = await CourtVerdict.insertMany(verdicts);
+    console.log('[seedVerdictsCivilFamily] Successfully seeded ' + insertResult.length + ' Civil/Family verdicts');
+
+    // Log category breakdown
+    const civilCount = verdicts.filter(v => v.category === 'Civil').length;
+    const familyCount = verdicts.filter(v => v.category === 'Family').length;
+    console.log('[seedVerdictsCivilFamily] Breakdown - Civil: ' + civilCount + ', Family: ' + familyCount);
+
+    await mongoose.connection.close();
+    console.log('[seedVerdictsCivilFamily] Database connection closed');
+    process.exit(0);
+  } catch (error) {
+    console.error('[seedVerdictsCivilFamily] Error seeding verdicts:', error.message);
+    await mongoose.connection.close();
+    process.exit(1);
+  }
+}
+
+seedVerdicts();
