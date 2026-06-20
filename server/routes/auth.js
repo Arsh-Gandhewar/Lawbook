@@ -321,9 +321,9 @@ router.post('/register', async (req, res) => {
       monthlyLimit = -1; // Unlimited for Advocate Pro
     }
 
-    // Generate OTP
+    // Generate OTP (no longer used for email, but keeping variables to avoid breaking other code if needed)
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     // Create user with subscription
     const user = new User({
@@ -332,9 +332,9 @@ router.post('/register', async (req, res) => {
       password: hashedPassword,
       phone,
       role: (role === 'advocate') ? 'advocate' : 'user',
-      isEmailVerified: false,
-      emailVerificationOTP: otp,
-      emailVerificationExpires: otpExpires,
+      isEmailVerified: true, // Render Free tier blocks SMTP, so we bypass verification
+      emailVerificationOTP: undefined,
+      emailVerificationExpires: undefined,
       subscription: {
         planId: payment.planId,
         planName: payment.planName,
@@ -364,13 +364,27 @@ router.post('/register', async (req, res) => {
 
     await user.save();
 
-    // Send OTP email
-    await sendVerificationEmail(email, name, otp);
+    // Bypass sending email because Render Free tier blocks SMTP ports (465/587)
+    // await sendVerificationEmail(email, name, otp);
+
+    // Generate token for direct login
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.status(201).json({
-      message: 'Registration successful! Please verify your email with the OTP sent.',
-      verificationRequired: true,
-      email: email
+      message: 'Registration successful!',
+      verificationRequired: false,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified
+      }
     });
   } catch (error) {
     console.error('Registration error:', error);
