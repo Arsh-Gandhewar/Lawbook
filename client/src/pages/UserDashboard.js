@@ -77,10 +77,13 @@ const UserDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const token = localStorage.getItem('token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+
         const [lawyersRes, appointmentsRes, chatsRes] = await Promise.all([
-          axios.get('/api/lawyers?limit=3'),
-          axios.get(`/api/appointments/user/${user?.id}`),
-          axios.get(`/api/chat/history/${user?.id}`)
+          axios.get('/api/lawyers?limit=3', config),
+          axios.get(`/api/appointments/user/${user?.id}`, config),
+          axios.get(`/api/chat/history/${user?.id}`, config)
         ]);
 
         const chatData = chatsRes.data;

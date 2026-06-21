@@ -31,14 +31,17 @@ const AdvocateDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const token = localStorage.getItem('token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+
         // Fetch advocate's appointments
-        const appointmentsRes = await axios.get(`/api/appointments/lawyer/${user?.id}`);
+        const appointmentsRes = await axios.get(`/api/appointments/lawyer/${user?.id}`, config);
         const aptData = appointmentsRes.data || [];
 
         setAppointments(aptData.slice(0, 10));
 
         // Fetch incoming chats
-        const chatsRes = await axios.get('/api/lawyer-chat/lawyer/incoming');
+        const chatsRes = await axios.get('/api/lawyer-chat/lawyer/incoming', config);
         setChats(chatsRes.data || []);
 
         // Calculate stats
@@ -52,7 +55,7 @@ const AdvocateDashboard = () => {
         });
 
         // Fetch availability slots and full profile
-        const profileRes = await axios.get(`/api/auth/user/${user?.id}`);
+        const profileRes = await axios.get(`/api/auth/user/${user?.id}`, config);
         setProfileData(profileRes.data);
         setAvailabilitySlots(profileRes.data.availabilitySlots || []);
       } catch (error) {
