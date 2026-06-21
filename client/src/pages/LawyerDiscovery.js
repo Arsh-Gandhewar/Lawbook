@@ -243,32 +243,13 @@ const LawyerDiscovery = () => {
 
     try {
       const scheduledDateTime = new Date(`${bookingData.scheduledDate}T${bookingData.scheduledTime}`);
-      const response = await axios.post('/api/appointments', {
-        lawyerId: selectedLawyer._id,
-        scheduledDate: scheduledDateTime,
-        type: bookingData.type,
-        notes: bookingData.notes,
-        amount: selectedLawyer.consultationFee
-      });
-      setPendingAppointment(response.data.appointment);
+      setBookingData({ ...bookingData, scheduledDateTime }); // Save the combined time for later
       setShowBookingModal(false);
       setBookingError('');
       setShowPaymentModal(true);
     } catch (error) {
-      console.error('Error booking appointment:', error);
-      if (error.response?.status === 409) {
-        // Server-side conflict — show the exact conflicting window
-        const conflict = error.response.data.conflictWindow;
-        if (conflict) {
-          const start = new Date(conflict.start).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-          const end = new Date(conflict.end).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-          setBookingError(`This slot is unavailable. The advocate has a meeting from ${start} to ${end}. Please pick a different time.`);
-        } else {
-          setBookingError(error.response.data.error || 'This time slot is already booked.');
-        }
-      } else {
-        setBookingError('Failed to book appointment. Please try again.');
-      }
+      console.error('Error in booking flow:', error);
+      setBookingError('Failed to prepare appointment. Please try again.');
     }
   };
 
@@ -286,7 +267,7 @@ const LawyerDiscovery = () => {
       }
 
       const orderResponse = await axios.post('/api/payments/create-order', {
-        appointmentId: pendingAppointment._id
+        lawyerId: selectedLawyer._id
       });
 
       const options = {
@@ -302,14 +283,17 @@ const LawyerDiscovery = () => {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              appointmentId: pendingAppointment._id
+              lawyerId: selectedLawyer._id,
+              scheduledDate: bookingData.scheduledDateTime,
+              type: bookingData.type,
+              notes: bookingData.notes
             });
             alert('Payment successful! Your appointment is confirmed.');
             setShowPaymentModal(false);
             navigate('/dashboard');
           } catch (error) {
-            console.error('Payment verification failed:', error);
-            alert('Payment verification failed. Please contact support.');
+            console.error('Payment verification/booking failed:', error);
+            alert(error.response?.data?.error || 'Payment verification failed. Please contact support.');
           }
         },
         prefill: {

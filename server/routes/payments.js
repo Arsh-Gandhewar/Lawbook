@@ -26,31 +26,27 @@ router.post('/create-order', auth, async (req, res) => {
       });
     }
 
-    const { appointmentId } = req.body;
+    const { lawyerId } = req.body;
 
-    if (!appointmentId) {
-      return res.status(400).json({ error: 'Appointment ID is required' });
+    if (!lawyerId) {
+      return res.status(400).json({ error: 'Lawyer ID is required' });
     }
 
-    // get amount from the appointment
-    const appointment = await Appointment.findById(appointmentId);
-    if (!appointment) {
-      return res.status(404).json({ error: 'Appointment not found' });
+    // get lawyer and fee
+    const User = require('../models/User');
+    const lawyer = await User.findOne({ _id: lawyerId, role: 'advocate', isVerified: true });
+    if (!lawyer) {
+      return res.status(404).json({ error: 'Verified lawyer not found' });
     }
 
-    // check ownership
-    if (appointment.userId.toString() !== req.user.userId) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const amount = appointment.amount;
+    const amount = lawyer.consultationFee || 0;
 
     const options = {
       amount: amount * 100, // Convert to paise
       currency: 'INR',
-      receipt: `receipt_${appointmentId}`,
+      receipt: `receipt_${Date.now()}`,
       notes: {
-        appointmentId
+        lawyerId
       }
     };
 
@@ -68,10 +64,19 @@ router.post('/create-order', auth, async (req, res) => {
   }
 });
 
-// Verify payment
+// Verify payment and create appointment
 router.post('/verify', auth, async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, appointmentId } = req.body;
+    const { 
+      razorpay_order_id, 
+      razorpay_payment_id, 
+      razorpay_signature,
+      lawyerId,
+      scheduledDate,
+      duration,
+      type,
+      notes
+    } = req.body;
 
     // Verify signature
     const sign = razorpay_order_id + '|' + razorpay_payment_id;
@@ -81,31 +86,78 @@ router.post('/verify', auth, async (req, res) => {
       .digest('hex');
 
     if (razorpay_signature === expectedSign) {
-      // Verify appointment ownership
-      const appointment = await Appointment.findById(appointmentId);
-      if (!appointment) {
-        return res.status(404).json({ error: 'Appointment not found' });
-      }
-      if (appointment.userId.toString() !== req.user.userId) {
-        return res.status(403).json({ error: 'Unauthorized' });
+      const User = require('../models/User');
+      const lawyer = await User.findOne({ _id: lawyerId, role: 'advocate', isVerified: true });
+      if (!lawyer) {
+        return res.status(404).json({ error: 'Verified lawyer not found' });
       }
 
-      // Update appointment with payment info — set to 'pending' so lawyer can see and accept/reject
-      appointment.paymentId = razorpay_payment_id;
-      appointment.status = 'pending';
+      // ── 30-minute conflict check ──
+      const SLOT_DURATION = 30; // minutes
+      const requestedStart = new Date(scheduledDate);
+      const requestedEnd = new Date(requestedStart.getTime() + SLOT_DURATION * 60 * 1000);
+
+      const conflicting = await Appointment.findOne({
+        lawyerId,
+        status: { $nin: ['cancelled'] },
+        $expr: {
+          $and: [
+            { $lt: ['$scheduledDate', requestedEnd] },
+            {
+              $lt: [
+                requestedStart,
+                {
+                  $add: [
+                    '$scheduledDate',
+                    { $multiply: [{ $ifNull: ['$duration', SLOT_DURATION] }, 60000] }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      });
+
+      if (conflicting) {
+        // In a real app we'd initiate a refund here.
+        return res.status(409).json({ 
+          error: 'This time slot was just booked by someone else. Your payment was captured, please contact support for a refund.' 
+        });
+      }
+
+      // Create appointment
+      const userId = req.user.userId;
+      const amount = lawyer.consultationFee || 0;
+      const meetingLink = type === 'video' 
+        ? `lawbook-meeting-${userId}-${lawyerId}-${Date.now()}`
+        : '';
+
+      const appointment = new Appointment({
+        userId,
+        lawyerId,
+        scheduledDate,
+        duration: duration || SLOT_DURATION,
+        type: type || 'video',
+        notes,
+        amount,
+        meetingLink,
+        status: 'pending', // Pending lawyer acceptance
+        paymentId: razorpay_payment_id
+      });
+
       await appointment.save();
 
       res.json({
         success: true,
-        message: 'Payment verified successfully',
+        message: 'Payment verified and appointment booked successfully',
         appointment
       });
     } else {
       res.status(400).json({ error: 'Invalid signature' });
     }
   } catch (error) {
-    console.error('Error verifying payment:', error);
-    res.status(500).json({ error: 'Failed to verify payment' });
+    console.error('Error verifying payment and booking:', error);
+    res.status(500).json({ error: 'Failed to verify payment and book appointment' });
   }
 });
 
