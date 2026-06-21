@@ -180,10 +180,10 @@ const AdvocateDashboard = () => {
             <div className="text-right">
               <div className="text-4xl mb-2">⭐</div>
               <div className="text-xl font-bold">
-                {user?.rating?.toFixed(1) || 'N/A'}
+                {profileData?.rating?.toFixed(1) || user?.rating?.toFixed(1) || 'N/A'}
               </div>
               <div className="text-sm text-gray-200">
-                ({user?.totalReviews || 0} reviews)
+                ({profileData?.totalReviews || user?.totalReviews || 0} reviews)
               </div>
             </div>
           </div>
