@@ -17,6 +17,7 @@ import LawyerChat from './pages/LawyerChat';
 import LawyerDiscovery from './pages/LawyerDiscovery';
 import VideoCall from './pages/VideoCall';
 import AdminPanel from './pages/AdminPanel';
+import LegalTemplates from './pages/LegalTemplates';
 
 // Smart Dashboard component that routes based on role
 const Dashboard = () => {
@@ -75,6 +76,7 @@ function App() {
           <Route path="/lawyers" element={<LawyerDiscovery />} />
           <Route path="/video/:appointmentId" element={<VideoCall />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/templates" element={<LegalTemplates />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>

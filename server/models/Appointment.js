@@ -56,5 +56,8 @@ const appointmentSchema = new mongoose.Schema({
     default: null
   }
 });
+// Indexes for faster conflict checks and dashboard queries
+appointmentSchema.index({ lawyerId: 1, scheduledDate: 1 });
+appointmentSchema.index({ userId: 1, scheduledDate: -1 });
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
@@ -32,9 +33,14 @@ router.post('/:lawyerId', auth, async (req, res) => {
         });
 
         // Update lawyer stats
-        const reviews = await Review.find({ lawyerId });
-        const totalReviews = reviews.length;
-        const averageRating = reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews;
+        // Update lawyer stats using MongoDB aggregation
+        const stats = await Review.aggregate([
+            { $match: { lawyerId: new mongoose.Types.ObjectId(lawyerId) } },
+            { $group: { _id: '$lawyerId', averageRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } }
+        ]);
+
+        const totalReviews = stats.length > 0 ? stats[0].totalReviews : 0;
+        const averageRating = stats.length > 0 ? stats[0].averageRating : 0;
 
         lawyer.rating = averageRating;
         lawyer.totalReviews = totalReviews;

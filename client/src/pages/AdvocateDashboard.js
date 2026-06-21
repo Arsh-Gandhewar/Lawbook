@@ -395,7 +395,7 @@ const AdvocateDashboard = () => {
               <div className="space-y-3 mb-4">
                 {availabilitySlots.length > 0 ? (
                   availabilitySlots.map((slot, index) => (
-                    <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                    <div key={`${slot.dayOfWeek}-${slot.startTime}-${index}`} className="bg-gray-50 p-3 rounded-lg">
                       <div className="flex justify-between items-center">
                         <div>
                           <p className="text-sm font-semibold text-navy">{slot.dayOfWeek}</p>
@@ -443,7 +443,7 @@ const AdvocateDashboard = () => {
 
               <div className="space-y-4">
                 {availabilitySlots.map((slot, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div key={`edit-${slot.dayOfWeek}-${index}`} className="border border-gray-200 rounded-lg p-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
                       <select
                         value={slot.dayOfWeek}

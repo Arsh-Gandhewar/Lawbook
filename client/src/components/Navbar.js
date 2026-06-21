@@ -37,6 +37,9 @@ const Navbar = () => {
                     Find Lawyer
                   </Link>
                 )}
+                <Link to="/templates" className="hover:text-gray-300 transition">
+                  Legal Templates
+                </Link>
                 {user.role === 'advocate' && (
                   <Link to="/analytics" className="hover:text-gray-300 transition">
                     Analytics

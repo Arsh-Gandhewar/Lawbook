@@ -272,7 +272,7 @@ const PricingPage = () => {
                 {/* Features */}
                 <ul className="space-y-3 mb-8 flex-grow">
                   {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start">
+                    <li key={`feature-${plan.id}-${index}`} className="flex items-start">
                       <svg
                         className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 mt-0.5"
                         fill="none"

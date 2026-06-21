@@ -175,5 +175,8 @@ const userSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+// Indexes for faster querying
+userSchema.index({ role: 1, isVerified: 1 });
+userSchema.index({ email: 1 });
 
 module.exports = mongoose.model('User', userSchema);

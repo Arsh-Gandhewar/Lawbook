@@ -4,6 +4,7 @@
   "description": "AI-powered legal guidance platform",
   "main": "server/server.js",
   "scripts": {
+    "start": "node server/server.js",
     "server": "nodemon server/server.js",
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",

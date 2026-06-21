@@ -197,7 +197,7 @@ const LawyerChat = () => {
 
                             return (
                                 <div
-                                    key={index}
+                                    key={msg._id || `msg-${index}`}
                                     className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                                 >
                                     <div
