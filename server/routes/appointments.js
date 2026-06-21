@@ -15,10 +15,10 @@ router.get('/slots/:lawyerId', auth, async (req, res) => {
     const dayStart = new Date(`${date}T00:00:00.000Z`);
     const dayEnd = new Date(`${date}T23:59:59.999Z`);
 
-    // Find all non-cancelled appointments for this lawyer on the given date
+    // Find only paid (pending/confirmed) appointments for this lawyer on the given date
     const appointments = await Appointment.find({
       lawyerId: req.params.lawyerId,
-      status: { $nin: ['cancelled'] },
+      status: { $in: ['pending', 'confirmed'] },
       scheduledDate: { $gte: dayStart, $lte: dayEnd }
     }).select('scheduledDate duration');
 
@@ -63,7 +63,7 @@ router.post('/', auth, async (req, res) => {
     //   A_start < B_end  AND  B_start < A_end
     const conflicting = await Appointment.findOne({
       lawyerId,
-      status: { $nin: ['cancelled'] },
+      status: { $in: ['pending', 'confirmed'] },
       $expr: {
         $and: [
           // existing appointment starts before new one ends
@@ -113,7 +113,7 @@ router.post('/', auth, async (req, res) => {
       notes,
       amount,
       meetingLink,
-      status: 'pending'
+      status: 'awaiting_payment'
     });
 
     await appointment.save();
@@ -153,9 +153,20 @@ router.get('/lawyer/:lawyerId', auth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const appointments = await Appointment.find({ lawyerId: req.params.lawyerId })
+    // Only show appointments that have been paid for (exclude awaiting_payment)
+    const appointments = await Appointment.find({ 
+      lawyerId: req.params.lawyerId,
+      status: { $ne: 'awaiting_payment' }
+    })
       .populate('userId', 'name phone email')
       .sort({ scheduledDate: -1 });
+
+    // Also clean up stale unpaid appointments older than 30 minutes
+    await Appointment.deleteMany({
+      lawyerId: req.params.lawyerId,
+      status: 'awaiting_payment',
+      createdAt: { $lt: new Date(Date.now() - 30 * 60 * 1000) }
+    });
 
     res.json(appointments);
   } catch (error) {

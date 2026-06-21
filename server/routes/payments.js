@@ -90,9 +90,9 @@ router.post('/verify', auth, async (req, res) => {
         return res.status(403).json({ error: 'Unauthorized' });
       }
 
-      // Update appointment with payment info
+      // Update appointment with payment info — set to 'pending' so lawyer can see and accept/reject
       appointment.paymentId = razorpay_payment_id;
-      appointment.status = 'confirmed';
+      appointment.status = 'pending';
       await appointment.save();
 
       res.json({
