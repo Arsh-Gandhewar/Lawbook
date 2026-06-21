@@ -49,9 +49,15 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await axios.post('/api/auth/login', { email, password });
-      setToken(response.data.token);
-      setUser(response.data.user);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      const { token, user } = response.data;
+      
+      // Set header synchronously to prevent race conditions on dashboard redirects
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      setToken(token);
+      setUser(user);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.response?.data?.error || 'Login failed' };
@@ -75,9 +81,12 @@ export const AuthProvider = ({ children }) => {
 
       // Direct login (fallback if no OTP required)
       if (response.data.token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        
         setToken(response.data.token);
         setUser(response.data.user);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
       }
       return { success: true };
     } catch (error) {
@@ -89,10 +98,16 @@ export const AuthProvider = ({ children }) => {
   const verifyOTP = async (email, otp) => {
     try {
       const response = await axios.post('/api/auth/verify-otp', { email, otp });
+      const { token, user } = response.data;
+      
+      // Set header synchronously to prevent race conditions on dashboard redirects
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
       // On success, server returns { token, user }
-      setToken(response.data.token);
-      setUser(response.data.user);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      setToken(token);
+      setUser(user);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.response?.data?.error || 'OTP verification failed' };
