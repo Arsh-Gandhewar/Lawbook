@@ -4,6 +4,41 @@ const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 
+// Check lawyer's booked slots for a given date (public for booking UI)
+router.get('/slots/:lawyerId', auth, async (req, res) => {
+  try {
+    const { date } = req.query; // expects YYYY-MM-DD
+    if (!date) {
+      return res.status(400).json({ error: 'Date query parameter is required (YYYY-MM-DD)' });
+    }
+
+    const dayStart = new Date(`${date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${date}T23:59:59.999Z`);
+
+    // Find all non-cancelled appointments for this lawyer on the given date
+    const appointments = await Appointment.find({
+      lawyerId: req.params.lawyerId,
+      status: { $nin: ['cancelled'] },
+      scheduledDate: { $gte: dayStart, $lte: dayEnd }
+    }).select('scheduledDate duration');
+
+    // Return the booked time windows so the frontend can block them
+    const bookedSlots = appointments.map(apt => {
+      const start = new Date(apt.scheduledDate);
+      const end = new Date(start.getTime() + (apt.duration || 30) * 60 * 1000);
+      return {
+        start: start.toISOString(),
+        end: end.toISOString()
+      };
+    });
+
+    res.json({ bookedSlots });
+  } catch (error) {
+    console.error('Error fetching booked slots:', error);
+    res.status(500).json({ error: 'Failed to fetch booked slots' });
+  }
+});
+
 // Book appointment
 router.post('/', auth, async (req, res) => {
   try {
@@ -14,6 +49,51 @@ router.post('/', auth, async (req, res) => {
     const lawyer = await User.findOne({ _id: lawyerId, role: 'advocate', isVerified: true });
     if (!lawyer) {
       return res.status(404).json({ error: 'Verified lawyer not found' });
+    }
+
+    // ── 30-minute conflict check ──
+    // A meeting occupies a 30-minute window from its start time.
+    // New booking is rejected if it overlaps with ANY existing non-cancelled
+    // appointment for the same lawyer.
+    const SLOT_DURATION = 30; // minutes
+    const requestedStart = new Date(scheduledDate);
+    const requestedEnd = new Date(requestedStart.getTime() + SLOT_DURATION * 60 * 1000);
+
+    // Two time ranges [A_start, A_end) and [B_start, B_end) overlap when:
+    //   A_start < B_end  AND  B_start < A_end
+    const conflicting = await Appointment.findOne({
+      lawyerId,
+      status: { $nin: ['cancelled'] },
+      $expr: {
+        $and: [
+          // existing appointment starts before new one ends
+          { $lt: ['$scheduledDate', requestedEnd] },
+          // existing appointment ends after new one starts
+          {
+            $lt: [
+              requestedStart,
+              {
+                $add: [
+                  '$scheduledDate',
+                  { $multiply: [{ $ifNull: ['$duration', SLOT_DURATION] }, 60000] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    });
+
+    if (conflicting) {
+      const conflictStart = new Date(conflicting.scheduledDate);
+      const conflictEnd = new Date(conflictStart.getTime() + (conflicting.duration || SLOT_DURATION) * 60 * 1000);
+      return res.status(409).json({
+        error: 'This time slot is not available. The advocate already has a meeting scheduled during this window.',
+        conflictWindow: {
+          start: conflictStart.toISOString(),
+          end: conflictEnd.toISOString()
+        }
+      });
     }
 
     // Use server-side amount from lawyer's profile — NEVER trust client
@@ -28,7 +108,7 @@ router.post('/', auth, async (req, res) => {
       userId,
       lawyerId,
       scheduledDate,
-      duration: duration || 30,
+      duration: duration || SLOT_DURATION,
       type: type || 'video',
       notes,
       amount,

@@ -145,9 +145,58 @@ const LawyerDiscovery = () => {
     setShowChatModal(true);
   };
 
+  // Booked slots state
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [bookingError, setBookingError] = useState('');
+
   const handleBookClick = (lawyer) => {
     setSelectedLawyer(lawyer);
+    setBookingError('');
+    setBookedSlots([]);
     setShowBookingModal(true);
+  };
+
+  // Fetch booked slots when user picks a date
+  const handleDateChange = async (e) => {
+    const date = e.target.value;
+    setBookingData({ ...bookingData, scheduledDate: date, scheduledTime: '' });
+    setBookingError('');
+    setBookedSlots([]);
+
+    if (date && selectedLawyer) {
+      try {
+        const response = await axios.get(`/api/appointments/slots/${selectedLawyer._id}?date=${date}`);
+        setBookedSlots(response.data.bookedSlots || []);
+      } catch (error) {
+        console.error('Error fetching booked slots:', error);
+      }
+    }
+  };
+
+  // Check if a chosen time conflicts with any booked slot
+  const isTimeConflicting = (timeStr) => {
+    if (!bookingData.scheduledDate || !timeStr || bookedSlots.length === 0) return false;
+
+    const chosen = new Date(`${bookingData.scheduledDate}T${timeStr}`);
+    const chosenEnd = new Date(chosen.getTime() + 30 * 60 * 1000); // 30-min window
+
+    return bookedSlots.some(slot => {
+      const slotStart = new Date(slot.start);
+      const slotEnd = new Date(slot.end);
+      // Overlap check: chosen_start < slot_end AND slot_start < chosen_end
+      return chosen < slotEnd && slotStart < chosenEnd;
+    });
+  };
+
+  // Format booked slots for display
+  const getBookedTimesDisplay = () => {
+    if (bookedSlots.length === 0) return null;
+    return bookedSlots.map(slot => {
+      const start = new Date(slot.start);
+      const end = new Date(slot.end);
+      const fmt = (d) => d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return `${fmt(start)} – ${fmt(end)}`;
+    });
   };
 
   const getAvailabilityForDate = (dateString, lawyer) => {
@@ -174,13 +223,21 @@ const LawyerDiscovery = () => {
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
+    setBookingError('');
+
     if (!currentAvailability.available) {
-      alert('The advocate is not available on this day.');
+      setBookingError('The advocate is not available on this day.');
       return;
     }
     const t = bookingData.scheduledTime;
     if (t < currentAvailability.start || t > currentAvailability.end) {
-      alert(`Please select a time between ${currentAvailability.start} and ${currentAvailability.end}.`);
+      setBookingError(`Please select a time between ${currentAvailability.start} and ${currentAvailability.end}.`);
+      return;
+    }
+
+    // Client-side conflict check
+    if (isTimeConflicting(t)) {
+      setBookingError('This time slot is already booked. Please choose a different time.');
       return;
     }
 
@@ -195,10 +252,23 @@ const LawyerDiscovery = () => {
       });
       setPendingAppointment(response.data.appointment);
       setShowBookingModal(false);
+      setBookingError('');
       setShowPaymentModal(true);
     } catch (error) {
       console.error('Error booking appointment:', error);
-      alert('Failed to book appointment. Please try again.');
+      if (error.response?.status === 409) {
+        // Server-side conflict — show the exact conflicting window
+        const conflict = error.response.data.conflictWindow;
+        if (conflict) {
+          const start = new Date(conflict.start).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+          const end = new Date(conflict.end).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+          setBookingError(`This slot is unavailable. The advocate has a meeting from ${start} to ${end}. Please pick a different time.`);
+        } else {
+          setBookingError(error.response.data.error || 'This time slot is already booked.');
+        }
+      } else {
+        setBookingError('Failed to book appointment. Please try again.');
+      }
     }
   };
 
@@ -501,13 +571,20 @@ const LawyerDiscovery = () => {
                 <p className="text-lg font-bold text-navy mt-2">₹{selectedLawyer?.consultationFee}</p>
               </div>
 
+              {/* Booking Error */}
+              {bookingError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <p className="text-red-600 text-sm font-medium">⚠️ {bookingError}</p>
+                </div>
+              )}
+
               <form onSubmit={handleBookingSubmit} className="space-y-4">
                 <div>
                   <label className="block text-navy font-semibold mb-2">Date</label>
                   <input
                     type="date"
                     value={bookingData.scheduledDate}
-                    onChange={(e) => setBookingData({ ...bookingData, scheduledDate: e.target.value })}
+                    onChange={handleDateChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     required
                     min={new Date().toISOString().split('T')[0]}
@@ -518,8 +595,15 @@ const LawyerDiscovery = () => {
                   <input
                     type="time"
                     value={bookingData.scheduledTime}
-                    onChange={(e) => setBookingData({ ...bookingData, scheduledTime: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    onChange={(e) => {
+                      setBookingData({ ...bookingData, scheduledTime: e.target.value });
+                      setBookingError('');
+                    }}
+                    className={`w-full px-4 py-2 border rounded-lg ${
+                      bookingData.scheduledTime && isTimeConflicting(bookingData.scheduledTime)
+                        ? 'border-red-400 bg-red-50'
+                        : 'border-gray-300'
+                    }`}
                     min={currentAvailability.start}
                     max={currentAvailability.end}
                     required
@@ -532,7 +616,27 @@ const LawyerDiscovery = () => {
                         : 'Not available on this day'}
                     </p>
                   )}
+                  {bookingData.scheduledTime && isTimeConflicting(bookingData.scheduledTime) && (
+                    <p className="text-xs mt-1 text-red-500 font-medium">
+                      ⚠️ This time overlaps with an existing booking
+                    </p>
+                  )}
                 </div>
+
+                {/* Show booked time windows */}
+                {bookedSlots.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-amber-800 text-xs font-semibold mb-1">🕐 Already booked slots on this date:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {getBookedTimesDisplay()?.map((slot, i) => (
+                        <span key={i} className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-medium">
+                          {slot}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-navy font-semibold mb-2">Type</label>
                   <select
@@ -557,14 +661,19 @@ const LawyerDiscovery = () => {
                 <div className="flex space-x-4">
                   <button
                     type="button"
-                    onClick={() => setShowBookingModal(false)}
+                    onClick={() => { setShowBookingModal(false); setBookingError(''); }}
                     className="flex-1 bg-gray-200 text-navy py-3 rounded-lg font-semibold hover:bg-gray-300"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-navy text-white py-3 rounded-lg font-semibold hover:bg-opacity-90"
+                    disabled={bookingData.scheduledTime && isTimeConflicting(bookingData.scheduledTime)}
+                    className={`flex-1 py-3 rounded-lg font-semibold ${
+                      bookingData.scheduledTime && isTimeConflicting(bookingData.scheduledTime)
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-navy text-white hover:bg-opacity-90'
+                    }`}
                   >
                     Proceed to Payment
                   </button>
